@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PowerAudit | Power Quality & Energy Monitoring Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-2: #202532;
+      --surface-3: #282e3d;
+      --text: #e2e8f0;
+      --muted: #91a0b8;
+      --soft: rgba(226, 232, 240, 0.08);
+      --line: rgba(226, 232, 240, 0.13);
+      --grid: rgba(226, 232, 240, 0.15);
+      --accent: #00d4aa;
+      --accent-2: #5be7cf;
+      --danger: #ff5d6c;
+      --warning: #f6c85f;
+      --success: #52d273;
+      --shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+      --radius: 8px;
+      --sidebar-width: 220px;
+      --transition: 200ms ease;
+    }
+
+    body.light {
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --surface-2: #eef3f7;
+      --surface-3: #e3eaf1;
+      --text: #1e2a3a;
+      --muted: #64748b;
+      --soft: rgba(30, 42, 58, 0.06);
+      --line: rgba(30, 42, 58, 0.13);
+      --grid: rgba(30, 42, 58, 0.15);
+      --accent: #0a7c6e;
+      --accent-2: #12a390;
+      --danger: #d82f46;
+      --warning: #b57905;
+      --success: #197a3b;
+      --shadow: 0 18px 38px rgba(30, 42, 58, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--bg);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        linear-gradient(135deg, rgba(0, 212, 170, 0.08), transparent 34%),
+        var(--bg);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 20;
+      display: flex;
+      width: var(--sidebar-width);
+      flex-direction: column;
+      gap: 24px;
+      border-right: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      padding: 22px 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2px 6px 12px;
+      color: var(--text);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand svg {
+      flex: 0 0 auto;
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav-link {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: 10px;
+      border: 0;
+      border-left: 3px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      padding: 11px 10px;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+      transition: background var(--transition), border-color var(--transition), color var(--transition);
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      border-left-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      color: var(--text);
+    }
+
+    .nav-link i {
+      width: 18px;
+      height: 18px;
+    }
+
+    .mobile-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      padding: 12px 14px;
+      backdrop-filter: blur(16px);
+    }
+
+    .icon-btn {
+      display: inline-grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition), transform var(--transition);
+    }
+
+    .icon-btn:hover {
+      border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+      background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+    }
+
+    .icon-btn:active {
+      transform: translateY(1px);
+    }
+
+    .main-content {
+      grid-column: 2;
+      min-width: 0;
+      padding: 22px;
+    }
+
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 0;
+      font-size: clamp(1.45rem, 2.4vw, 2rem);
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin-bottom: 12px;
+      font-size: 0.96rem;
+      letter-spacing: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      min-height: 36px;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
+    .panel {
+      display: none;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity var(--transition), transform var(--transition);
+    }
+
+    .panel.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .kpi-grid {
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      margin-bottom: 16px;
+    }
+
+    .card,
+    .chart-card,
+    .control-panel,
+    .report-sheet {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .kpi-card {
+      position: relative;
+      min-height: 132px;
+      overflow: hidden;
+      border-left: 4px solid var(--accent);
+      padding: 16px 14px 12px;
+    }
+
+    .kpi-value {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 7px;
+      font-family: "DM Mono", monospace;
+      font-size: clamp(1.3rem, 2vw, 1.82rem);
+      font-weight: 500;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .kpi-unit {
+      color: var(--muted);
+      font-family: "Inter", sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .sparkline {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      left: 14px;
+      height: 34px;
+      opacity: 0.78;
+    }
+
+    .two-col {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    .chart-card {
+      min-height: 360px;
+      padding: 16px;
+    }
+
+    .chart-card.large {
+      min-height: 530px;
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      min-height: 300px;
+      height: 34vh;
+      max-height: 440px;
+    }
+
+    .chart-card.large .chart-wrap {
+      height: 62vh;
+      min-height: 410px;
+      max-height: 640px;
+    }
+
+    .phasor-wrap {
+      display: grid;
+      place-items: center;
+      min-height: 328px;
+    }
+
+    #phasorCanvas {
+      width: min(100%, 400px);
+      max-width: 400px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: radial-gradient(circle at center, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%), var(--surface-2);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .swatch.voltage {
+      background: #00d4aa;
+    }
+
+    .swatch.current {
+      background: #f6c85f;
+    }
+
+    .swatch.power {
+      background: #7aa2ff;
+    }
+
+    .control-panel {
+      margin-top: 16px;
+      padding: 16px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(170px, 1fr));
+      gap: 16px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control label,
+    .field label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .readout {
+      color: var(--text);
+      font-family: "DM Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-transform: none;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      outline: none;
+      background: linear-gradient(90deg, var(--accent) var(--fill, 50%), var(--surface-3) var(--fill, 50%));
+      cursor: pointer;
+      appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 14%, transparent);
+      appearance: none;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
+    .segmented {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 3px;
+    }
+
+    .segmented button,
+    .text-btn {
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 800;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    .segmented button {
+      min-width: 54px;
+      padding: 8px 10px;
+    }
+
+    .segmented button.active,
+    .text-btn.primary {
+      background: var(--accent);
+      color: #061110;
+    }
+
+    .text-btn {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      padding: 9px 12px;
+    }
+
+    .text-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 13px;
+    }
+
+    .stat-card span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .stat-card strong {
+      color: var(--text);
+      font-family: "DM Mono", monospace;
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field input[type="number"],
+    .field input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 11px 12px;
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--transition), background var(--transition);
+    }
+
+    .field input:focus {
+      border-color: var(--accent);
+    }
+
+    .spectrum-details {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .formula {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .accent-value {
+      color: var(--accent);
+      font-family: "DM Mono", monospace;
+      font-weight: 500;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      display: inline-flex;
+      min-width: 76px;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: #08110d;
+      font-size: 0.76rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+
+    .badge.pass {
+      background: var(--success);
+    }
+
+    .badge.fail {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .report-sheet {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: clamp(18px, 3vw, 34px);
+      background: var(--surface);
+    }
+
+    .report-header {
+      display: grid;
+      grid-template-columns: 1fr minmax(220px, 300px);
+      gap: 20px;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+    }
+
+    .report-date {
+      color: var(--muted);
+      font-family: "DM Mono", monospace;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 0.92rem;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+    }
+
+    td:last-child,
+    th:last-child {
+      text-align: right;
+      font-family: "DM Mono", monospace;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .assessment {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0;
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 16px;
+    }
+
+    .recommendations {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--text);
+    }
+
+    .recommendations li {
+      margin: 8px 0;
+    }
+
+    .report-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .mobile-menu {
+      display: none;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      padding: 10px 14px;
+    }
+
+    @media (max-width: 1180px) {
+      .kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .controls-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 900px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-card.large .chart-wrap,
+      .chart-wrap {
+        height: 360px;
+        min-height: 320px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .app-shell {
+        display: block;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .mobile-topbar {
+        display: flex;
+      }
+
+      .mobile-menu.open {
+        display: grid;
+        gap: 8px;
+      }
+
+      .main-content {
+        padding: 16px 14px 24px;
+      }
+
+      .dashboard-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .kpi-grid,
+      .controls-grid,
+      .stats-grid,
+      .spectrum-details,
+      .report-header {
+        grid-template-columns: 1fr;
+      }
+
+      .badges {
+        justify-content: flex-start;
+      }
+
+      .chart-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #111827;
+      }
+
+      .sidebar,
+      .mobile-topbar,
+      .mobile-menu,
+      .dashboard-header,
+      .nav-list,
+      .report-actions,
+      .panel:not(#energy) {
+        display: none !important;
+      }
+
+      .app-shell,
+      .main-content {
+        display: block;
+        padding: 0;
+      }
+
+      .panel,
+      .panel.active {
+        display: block;
+        opacity: 1;
+        transform: none;
+      }
+
+      .report-sheet {
+        border: 0;
+        box-shadow: none;
+        color: #111827;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-topbar">
+    <div class="brand" aria-label="PowerAudit">
+      <svg width="34" height="34" viewBox="0 0 44 44" aria-hidden="true">
+        <circle cx="22" cy="22" r="20" fill="none" stroke="var(--accent)" stroke-width="3"></circle>
+        <path d="M24 7 13 25h8l-2 12 12-20h-8l1-10Z" fill="var(--accent)"></path>
+      </svg>
+      <span>PowerAudit</span>
+    </div>
+    <button class="icon-btn" id="menuToggle" type="button" aria-label="Open navigation" title="Navigation">
+      <i data-lucide="menu"></i>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand" aria-label="PowerAudit">
+        <svg width="38" height="38" viewBox="0 0 44 44" aria-hidden="true">
+          <circle cx="22" cy="22" r="20" fill="none" stroke="var(--accent)" stroke-width="3"></circle>
+          <path d="M24 7 13 25h8l-2 12 12-20h-8l1-10Z" fill="var(--accent)"></path>
+        </svg>
+        <span>PowerAudit</span>
+      </div>
+      <nav class="nav-list" id="desktopNav" aria-label="Dashboard panels">
+        <button class="nav-link active" type="button" data-panel="overview"><i data-lucide="layout-dashboard"></i>Overview</button>
+        <button class="nav-link" type="button" data-panel="waveform"><i data-lucide="activity"></i>Waveform Analysis</button>
+        <button class="nav-link" type="button" data-panel="harmonics"><i data-lucide="bar-chart-3"></i>Harmonic Spectrum</button>
+        <button class="nav-link" type="button" data-panel="correction"><i data-lucide="gauge"></i>Power Factor Correction</button>
+        <button class="nav-link" type="button" data-panel="energy"><i data-lucide="file-text"></i>Energy Audit</button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="dashboard-header">
+        <div>
+          <p class="eyebrow">Industrial Power Quality Audit</p>
+          <h1>Real-Time Power Quality & Energy Monitoring Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <div class="status-pill"><span class="status-dot"></span><span id="systemStatus">Sampling at 60 Hz</span></div>
+          <button class="icon-btn" id="themeToggle" type="button" aria-label="Toggle color theme" title="Toggle theme">
+            <i data-lucide="moon"></i>
+          </button>
+        </div>
+      </header>
+
+      <section class="panel active" id="overview" aria-labelledby="overview-title">
+        <h2 id="overview-title">Overview</h2>
+        <div class="grid kpi-grid" id="kpiGrid">
+          <article class="card kpi-card"><div class="kpi-value"><span id="kpiP">0.00</span><span class="kpi-unit">kW</span></div><div class="kpi-label">Real Power P</div><canvas class="sparkline" data-spark="p"></canvas></article>
+          <article class="card kpi-card"><div class="kpi-value"><span id="kpiQ">0.00</span><span class="kpi-unit">kVAR</span></div><div class="kpi-label">Reactive Power Q</div><canvas class="sparkline" data-spark="q"></canvas></article>
+          <article class="card kpi-card"><div class="kpi-value"><span id="kpiS">0.00</span><span class="kpi-unit">kVA</span></div><div class="kpi-label">Apparent Power S</div><canvas class="sparkline" data-spark="s"></canvas></article>
+          <article class="card kpi-card"><div class="kpi-value"><span id="kpiPF">0.000</span></div><div class="kpi-label">Power Factor</div><canvas class="sparkline" data-spark="pf"></canvas></article>
+          <article class="card kpi-card"><div class="kpi-value"><span id="kpiTHDV">0.00</span><span class="kpi-unit">%</span></div><div class="kpi-label">THD Voltage</div><canvas class="sparkline" data-spark="thdv"></canvas></article>
+          <article class="card kpi-card"><div class="kpi-value"><span id="kpiTHDI">0.00</span><span class="kpi-unit">%</span></div><div class="kpi-label">THD Current</div><canvas class="sparkline" data-spark="thdi"></canvas></article>
+        </div>
+
+        <div class="grid two-col">
+          <section class="chart-card">
+            <div class="chart-head">
+              <h3>Live Phasor Diagram</h3>
+              <div class="legend">
+                <span class="legend-item"><span class="swatch voltage"></span>Voltage V</span>
+                <span class="legend-item"><span class="swatch current"></span>Current I</span>
+              </div>
+            </div>
+            <div class="phasor-wrap">
+              <canvas id="phasorCanvas" width="400" height="400" aria-label="Animated phasor diagram"></canvas>
+            </div>
+          </section>
+          <section class="chart-card">
+            <div class="chart-head"><h3>Power Triangle</h3></div>
+            <div class="chart-wrap"><canvas id="powerTriangleChart"></canvas></div>
+          </section>
+        </div>
+
+        <section class="control-panel" aria-label="Parameter controls">
+          <div class="chart-head">
+            <h3>System Parameters</h3>
+            <div class="segmented" aria-label="Frequency selector">
+              <button type="button" data-frequency="50">50 Hz</button>
+              <button class="active" type="button" data-frequency="60">60 Hz</button>
+            </div>
+          </div>
+          <div class="controls-grid">
+            <div class="control"><label for="voltage">Voltage <span class="readout" id="voltageReadout">240 V</span></label><input id="voltage" type="range" min="100" max="480" value="240"></div>
+            <div class="control"><label for="current">Current <span class="readout" id="currentReadout">30 A</span></label><input id="current" type="range" min="1" max="100" value="30"></div>
+            <div class="control"><label for="phaseAngle">Phase Angle φ <span class="readout" id="phaseReadout">25°</span></label><input id="phaseAngle" type="range" min="0" max="89" value="25"></div>
+            <div class="control"><label for="h3">3rd Harmonic <span class="readout" id="h3Readout">0%</span></label><input id="h3" type="range" min="0" max="30" value="0"></div>
+            <div class="control"><label for="h5">5th Harmonic <span class="readout" id="h5Readout">0%</span></label><input id="h5" type="range" min="0" max="20" value="0"></div>
+            <div class="control"><label for="h7">7th Harmonic <span class="readout" id="h7Readout">0%</span></label><input id="h7" type="range" min="0" max="10" value="0"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel" id="waveform" aria-labelledby="waveform-title">
+        <div class="chart-card large">
+          <div class="chart-head">
+            <div>
+              <h2 id="waveform-title">Waveform Analysis</h2>
+              <div class="legend">
+                <span class="legend-item"><span class="swatch voltage"></span>Voltage</span>
+                <span class="legend-item"><span class="swatch current"></span>Current</span>
+                <span class="legend-item"><span class="swatch power"></span>Instantaneous Power</span>
+              </div>
+            </div>
+            <button class="text-btn" id="freezeToggle" type="button"><i data-lucide="pause"></i><span>Freeze</span></button>
+          </div>
+          <div class="chart-wrap"><canvas id="waveformChart"></canvas></div>
+        </div>
+      </section>
+
+      <section class="panel" id="harmonics" aria-labelledby="harmonics-title">
+        <h2 id="harmonics-title">Harmonic Spectrum</h2>
+        <div class="grid two-col">
+          <section class="chart-card">
+            <div class="chart-head"><h3>Voltage Harmonic Spectrum</h3></div>
+            <div class="chart-wrap"><canvas id="voltageSpectrumChart"></canvas></div>
+          </section>
+          <section class="chart-card">
+            <div class="chart-head"><h3>Current Harmonic Spectrum</h3></div>
+            <div class="chart-wrap"><canvas id="currentSpectrumChart"></canvas></div>
+          </section>
+        </div>
+        <div class="spectrum-details">
+          <div>
+            <div class="formula">THD = √(V₃² + V₅² + V₇²) / V₁ × 100%</div>
+            <div>THD_V <span class="accent-value" id="thdVText">0.00%</span> · THD_I <span class="accent-value" id="thdIText">0.00%</span> · IEEE 519 limit: 5%</div>
+          </div>
+          <div class="badges">
+            <span class="badge pass" id="voltageBadge">V PASS</span>
+            <span class="badge pass" id="currentBadge">I PASS</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="correction" aria-labelledby="correction-title">
+        <h2 id="correction-title">Power Factor Correction</h2>
+        <div class="grid two-col">
+          <section class="chart-card">
+            <h3>Correction Inputs</h3>
+            <div class="form-grid">
+              <div class="field"><label for="currentPFInput">Current PF</label><input id="currentPFInput" type="number" min="0.01" max="1" step="0.001" value="0.906"></div>
+              <div class="control"><label for="targetPF">Target PF <span class="readout" id="targetPFReadout">0.95</span></label><input id="targetPF" type="range" min="0.80" max="1.00" step="0.01" value="0.95"></div>
+              <div class="field"><label for="pfcVoltage">System voltage (V)</label><input id="pfcVoltage" type="number" readonly></div>
+              <div class="field"><label for="pfcFrequency">Frequency (Hz)</label><input id="pfcFrequency" type="number" readonly></div>
+              <div class="field"><label for="pfcPower">Load real power P (kW)</label><input id="pfcPower" type="number" readonly></div>
+            </div>
+          </section>
+          <section class="chart-card">
+            <h3>Correction Results</h3>
+            <div class="stats-grid">
+              <div class="stat-card"><span>Required capacitor Qc</span><strong id="qcResult">0.00</strong></div>
+              <div class="stat-card"><span>Capacitance C</span><strong id="capResult">0.00</strong></div>
+              <div class="stat-card"><span>New apparent power</span><strong id="sNewResult">0.00</strong></div>
+              <div class="stat-card"><span>New current</span><strong id="iNewResult">0.00</strong></div>
+              <div class="stat-card"><span>Energy savings</span><strong id="energySavingsResult">0</strong></div>
+              <div class="stat-card"><span>Cost savings</span><strong id="costSavingsResult">$0</strong></div>
+            </div>
+          </section>
+        </div>
+        <section class="chart-card" style="margin-top: 16px;">
+          <div class="chart-head"><h3>Before / After Power Triangle</h3></div>
+          <div class="chart-wrap"><canvas id="pfCorrectionChart"></canvas></div>
+        </section>
+      </section>
+
+      <section class="panel" id="energy" aria-labelledby="report-title">
+        <article class="report-sheet">
+          <div class="report-header">
+            <div>
+              <h2 id="report-title">Power Quality Audit Report</h2>
+              <p class="report-date" id="reportDate"></p>
+            </div>
+            <div class="field">
+              <label for="siteName">Site name</label>
+              <input id="siteName" type="text" value="Industrial Site A">
+            </div>
+          </div>
+          <table aria-label="Power quality summary">
+            <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+            <tbody id="summaryTable"></tbody>
+          </table>
+          <section class="assessment">
+            <h3>Power Quality Assessment</h3>
+            <p id="assessmentText"></p>
+          </section>
+          <section>
+            <h3>Recommendations</h3>
+            <ul class="recommendations" id="recommendations"></ul>
+          </section>
+          <div class="report-actions">
+            <button class="text-btn primary" id="downloadCsv" type="button"><i data-lucide="download"></i><span>Download Report as CSV</span></button>
+            <button class="text-btn" id="printReport" type="button"><i data-lucide="printer"></i><span>Print Report</span></button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // STATE
+      const state = {
+        voltage: 240,
+        current: 30,
+        phaseAngle: 25,
+        frequency: 60,
+        h3: 0,
+        h5: 0,
+        h7: 0,
+        targetPF: 0.95,
+        siteName: "Industrial Site A"
+      };
+
+      const charts = {};
+      const history = { p: [], q: [], s: [], pf: [], thdv: [], thdi: [] };
+      const els = {};
+      let derived = {};
+      let activePanel = "overview";
+      let waveformFrozen = false;
+      let animationStart = performance.now();
+      let waveformOffset = 0;
+
+      // CALCULATIONS
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      const degToRad = degrees => degrees * Math.PI / 180;
+      const radToDeg = radians => radians * 180 / Math.PI;
+      const fmt = (value, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : "0.00";
+      const cssVar = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+      const calculate = () => {
+        const phi = degToRad(state.phaseAngle);
+        const vPeak = state.voltage * Math.sqrt(2);
+        const iPeak = state.current * Math.sqrt(2);
+        const omega = 2 * Math.PI * state.frequency;
+        const pW = state.voltage * state.current * Math.cos(phi);
+        const qVAR = state.voltage * state.current * Math.sin(phi);
+        const sVA = state.voltage * state.current;
+        const pKW = pW / 1000;
+        const qKVAR = qVAR / 1000;
+        const sKVA = sVA / 1000;
+        const pf = pW / sVA;
+        const thdV = Math.sqrt(state.h3 ** 2 + state.h5 ** 2 + state.h7 ** 2) / 1.0 * 100;
+        const thdI = Math.sqrt(state.h3 ** 2 + state.h5 ** 2 + state.h7 ** 2) / 1.0 * 100;
+        const targetPF = clamp(state.targetPF, 0.8, 1);
+        const phi1 = Math.acos(clamp(pf, 0.01, 1));
+        const phi2 = Math.acos(targetPF);
+        const qcVAR = Math.max(0, pKW * 1000 * (Math.tan(phi1) - Math.tan(phi2)));
+        const correctedQVAR = Math.max(0, qVAR - qcVAR);
+        const sNewVA = Math.sqrt(pW ** 2 + correctedQVAR ** 2);
+        const sNewKVA = sNewVA / 1000;
+        const iNew = sNewVA / state.voltage;
+        const capacitanceUF = qcVAR / (omega * state.voltage ** 2) * 1e6;
+        const energySavingsKWh = Math.max(0, (sKVA - sNewKVA) * pf * 720);
+        const costSavings = energySavingsKWh * 0.12;
+
+        return {
+          phi,
+          vPeak,
+          iPeak,
+          omega,
+          pW,
+          qVAR,
+          sVA,
+          pKW,
+          qKVAR,
+          sKVA,
+          pf,
+          thdV,
+          thdI,
+          qcVAR,
+          qcKVAR: qcVAR / 1000,
+          correctedQVAR,
+          correctedQKVAR: correctedQVAR / 1000,
+          sNewVA,
+          sNewKVA,
+          iNew,
+          capacitanceUF,
+          energySavingsKWh,
+          costSavings,
+          targetPF,
+          targetPhi: phi2
+        };
+      };
+
+      const recalculate = () => {
+        derived = calculate();
+        pushHistory();
+        updateReadouts();
+        updateAllKPIs();
+        updatePowerFactorPanel();
+        updateAuditReport();
+        updateAllCharts();
+      };
+
+      const pushHistory = () => {
+        const points = { p: derived.pKW, q: derived.qKVAR, s: derived.sKVA, pf: derived.pf, thdv: derived.thdV, thdi: derived.thdI };
+        Object.entries(points).forEach(([key, value]) => {
+          history[key].push(value);
+          if (history[key].length > 28) history[key].shift();
+        });
+      };
+
+      // CHARTS
+      const limitLinePlugin = {
+        id: "limitLine",
+        afterDatasetsDraw: chart => {
+          if (!chart.options.plugins.limitLine?.enabled) return;
+          const { ctx, chartArea, scales } = chart;
+          const y = scales.y.getPixelForValue(5);
+          ctx.save();
+          ctx.beginPath();
+          ctx.setLineDash([7, 6]);
+          ctx.strokeStyle = cssVar("--danger");
+          ctx.lineWidth = 2;
+          ctx.moveTo(chartArea.left, y);
+          ctx.lineTo(chartArea.right, y);
+          ctx.stroke();
+          ctx.fillStyle = cssVar("--danger");
+          ctx.font = "700 11px Inter";
+          ctx.fillText("IEEE 519 5%", chartArea.left + 8, y - 8);
+          ctx.restore();
+        }
+      };
+
+      Chart.register(limitLinePlugin);
+
+      const chartDefaults = () => {
+        Chart.defaults.color = cssVar("--muted");
+        Chart.defaults.borderColor = cssVar("--grid");
+        Chart.defaults.font.family = "Inter";
+      };
+
+      const baseChartOptions = (xTitle, yTitle) => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 160 },
+        interaction: { mode: "nearest", intersect: false },
+        plugins: {
+          legend: { labels: { usePointStyle: true, boxHeight: 8 } },
+          tooltip: { backgroundColor: cssVar("--surface-3"), borderColor: cssVar("--line"), borderWidth: 1 }
+        },
+        scales: {
+          x: {
+            title: { display: Boolean(xTitle), text: xTitle },
+            grid: { color: cssVar("--grid") },
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+          },
+          y: {
+            title: { display: Boolean(yTitle), text: yTitle },
+            grid: { color: cssVar("--grid") }
+          }
+        }
+      });
+
+      const triangleData = (p, q) => [
+        { x: 0, y: 0 },
+        { x: p, y: 0 },
+        { x: p, y: q },
+        { x: 0, y: 0 }
+      ];
+
+      const generateWaveforms = () => {
+        const points = 256;
+        const periodMs = 1000 / state.frequency;
+        return Array.from({ length: points }, (_, index) => {
+          const theta = (index / (points - 1)) * 2 * Math.PI + waveformOffset;
+          const shifted = theta - derived.phi;
+          const v = derived.vPeak * (
+            Math.sin(theta) +
+            state.h3 * Math.sin(3 * theta) +
+            state.h5 * Math.sin(5 * theta) +
+            state.h7 * Math.sin(7 * theta)
+          );
+          const i = derived.iPeak * (
+            Math.sin(shifted) +
+            state.h3 * Math.sin(3 * shifted) +
+            state.h5 * Math.sin(5 * shifted) +
+            state.h7 * Math.sin(7 * shifted)
+          );
+          return {
+            x: index / (points - 1) * periodMs,
+            v,
+            i,
+            p: (v * i) / 1000
+          };
+        });
+      };
+
+      const createCharts = () => {
+        chartDefaults();
+        const accent = cssVar("--accent");
+        const voltage = "#00d4aa";
+        const current = "#f6c85f";
+        const power = "#7aa2ff";
+        const muted = cssVar("--muted");
+
+        charts.powerTriangle = new Chart(els.powerTriangleChart, {
+          type: "scatter",
+          data: { datasets: [{ label: "S-P-Q Triangle", data: triangleData(derived.pKW, derived.qKVAR), showLine: true, fill: true, borderColor: accent, backgroundColor: `${accent}22`, pointRadius: 4, tension: 0 }] },
+          options: { ...baseChartOptions("P (kW)", "Q (kVAR)"), scales: { x: { ...baseChartOptions().scales.x, min: 0, title: { display: true, text: "P (kW)" } }, y: { ...baseChartOptions().scales.y, min: 0, title: { display: true, text: "Q (kVAR)" } } } }
+        });
+
+        const waveform = generateWaveforms();
+        charts.waveform = new Chart(els.waveformChart, {
+          type: "line",
+          data: {
+            datasets: [
+              { label: "Voltage V", data: waveform.map(point => ({ x: point.x, y: point.v })), borderColor: voltage, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2 },
+              { label: "Current A", data: waveform.map(point => ({ x: point.x, y: point.i })), borderColor: current, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2 },
+              { label: "Power kW", data: waveform.map(point => ({ x: point.x, y: point.p })), borderColor: power, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2 }
+            ]
+          },
+          options: {
+            ...baseChartOptions("Time (ms)", "Amplitude"),
+            scales: {
+              x: { ...baseChartOptions().scales.x, type: "linear", title: { display: true, text: "Time (ms)" } },
+              y: { ...baseChartOptions().scales.y, title: { display: true, text: "Amplitude" } }
+            }
+          }
+        });
+
+        const spectrumConfig = label => ({
+          type: "bar",
+          data: {
+            labels: ["1st", "3rd", "5th", "7th"],
+            datasets: [{ label, data: [100, state.h3 * 100, state.h5 * 100, state.h7 * 100], backgroundColor: [accent, current, power, muted], borderRadius: 5 }]
+          },
+          options: {
+            ...baseChartOptions("Harmonic Order", "% of Fundamental"),
+            plugins: { ...baseChartOptions().plugins, limitLine: { enabled: true } },
+            scales: {
+              x: { ...baseChartOptions().scales.x, title: { display: true, text: "Harmonic Order" } },
+              y: { ...baseChartOptions().scales.y, min: 0, max: 110, title: { display: true, text: "% of Fundamental" } }
+            }
+          }
+        });
+        charts.voltageSpectrum = new Chart(els.voltageSpectrumChart, spectrumConfig("Voltage Harmonics"));
+        charts.currentSpectrum = new Chart(els.currentSpectrumChart, spectrumConfig("Current Harmonics"));
+
+        charts.pfCorrection = new Chart(els.pfCorrectionChart, {
+          type: "scatter",
+          data: {
+            datasets: [
+              { label: "Original", data: triangleData(derived.pKW, derived.qKVAR), showLine: true, fill: true, borderColor: "#8b95a8", backgroundColor: "#8b95a833", pointRadius: 4 },
+              { label: "Corrected", data: triangleData(derived.pKW, derived.correctedQKVAR), showLine: true, fill: true, borderColor: accent, backgroundColor: `${accent}26`, pointRadius: 4 }
+            ]
+          },
+          options: { ...baseChartOptions("P (kW)", "Q (kVAR)"), scales: { x: { ...baseChartOptions().scales.x, min: 0, title: { display: true, text: "P (kW)" } }, y: { ...baseChartOptions().scales.y, min: 0, title: { display: true, text: "Q (kVAR)" } } } }
+        });
+      };
+
+      const updateAllCharts = () => {
+        if (!charts.powerTriangle) return;
+        const accent = cssVar("--accent");
+        const xMax = Math.max(1, derived.pKW * 1.18);
+        const yMax = Math.max(1, derived.qKVAR * 1.25, derived.correctedQKVAR * 1.35);
+
+        charts.powerTriangle.data.datasets[0].data = triangleData(derived.pKW, derived.qKVAR);
+        charts.powerTriangle.data.datasets[0].borderColor = accent;
+        charts.powerTriangle.data.datasets[0].backgroundColor = `${accent}22`;
+        charts.powerTriangle.options.scales.x.max = xMax;
+        charts.powerTriangle.options.scales.y.max = Math.max(1, derived.qKVAR * 1.35);
+        charts.powerTriangle.update("none");
+
+        updateWaveformChart();
+
+        [charts.voltageSpectrum, charts.currentSpectrum].forEach(chart => {
+          chart.data.datasets[0].data = [100, state.h3 * 100, state.h5 * 100, state.h7 * 100];
+          chart.data.datasets[0].backgroundColor[0] = accent;
+          chart.update("none");
+        });
+
+        charts.pfCorrection.data.datasets[0].data = triangleData(derived.pKW, derived.qKVAR);
+        charts.pfCorrection.data.datasets[1].data = triangleData(derived.pKW, derived.correctedQKVAR);
+        charts.pfCorrection.data.datasets[1].borderColor = accent;
+        charts.pfCorrection.data.datasets[1].backgroundColor = `${accent}26`;
+        charts.pfCorrection.options.scales.x.max = xMax;
+        charts.pfCorrection.options.scales.y.max = yMax;
+        charts.pfCorrection.update("none");
+      };
+
+      const updateWaveformChart = () => {
+        if (!charts.waveform) return;
+        const waveform = generateWaveforms();
+        charts.waveform.data.datasets[0].data = waveform.map(point => ({ x: point.x, y: point.v }));
+        charts.waveform.data.datasets[1].data = waveform.map(point => ({ x: point.x, y: point.i }));
+        charts.waveform.data.datasets[2].data = waveform.map(point => ({ x: point.x, y: point.p }));
+        charts.waveform.update("none");
+      };
+
+      const refreshChartTheme = () => {
+        chartDefaults();
+        Object.values(charts).forEach(chart => {
+          chart.options.plugins.tooltip.backgroundColor = cssVar("--surface-3");
+          chart.options.plugins.tooltip.borderColor = cssVar("--line");
+          Object.values(chart.options.scales || {}).forEach(scale => {
+            scale.grid.color = cssVar("--grid");
+          });
+          chart.update("none");
+        });
+      };
+
+      const drawSparklines = () => {
+        document.querySelectorAll(".sparkline").forEach(canvas => {
+          const key = canvas.dataset.spark;
+          const data = history[key];
+          const rect = canvas.getBoundingClientRect();
+          const ratio = window.devicePixelRatio || 1;
+          canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+          canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+          const ctx = canvas.getContext("2d");
+          ctx.scale(ratio, ratio);
+          ctx.clearRect(0, 0, rect.width, rect.height);
+          if (data.length < 2) return;
+          const min = Math.min(...data);
+          const max = Math.max(...data);
+          const span = max - min || 1;
+          ctx.beginPath();
+          data.forEach((value, index) => {
+            const x = index / (data.length - 1) * rect.width;
+            const y = rect.height - ((value - min) / span * (rect.height - 8) + 4);
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.strokeStyle = cssVar("--accent");
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        });
+      };
+
+      const drawPhasor = timestamp => {
+        const canvas = els.phasorCanvas;
+        const ctx = canvas.getContext("2d");
+        const width = canvas.width;
+        const height = canvas.height;
+        const center = width / 2;
+        const elapsed = (timestamp - animationStart) / 1000;
+        const maxRadius = 142;
+        const minRadius = 54;
+        const voltageRadius = minRadius + ((state.voltage - 100) / (480 - 100)) * (maxRadius - minRadius);
+        const currentRadius = minRadius + ((state.current - 1) / (100 - 1)) * (maxRadius - minRadius);
+        const vAngle = 0;
+        const iAngle = -derived.phi;
+        const phaseMarkerAngle = elapsed * 2 * Math.PI * 0.18;
+        const phasorPoint = (angle, length) => ({
+          x: center + Math.cos(angle) * length,
+          y: center - Math.sin(angle) * length
+        });
+        const vEnd = phasorPoint(vAngle, voltageRadius);
+        const iEnd = phasorPoint(iAngle, currentRadius);
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = cssVar("--grid");
+        ctx.lineWidth = 1;
+        for (let r = 52; r <= 156; r += 52) {
+          ctx.beginPath();
+          ctx.arc(center, center, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(center, 30);
+        ctx.lineTo(center, height - 30);
+        ctx.moveTo(30, center);
+        ctx.lineTo(width - 30, center);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.strokeStyle = cssVar("--accent-2");
+        ctx.globalAlpha = 0.28;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(center, center, 170, phaseMarkerAngle, phaseMarkerAngle + Math.PI / 10);
+        ctx.stroke();
+        ctx.restore();
+
+        const arrow = (end, color, label, valueLabel) => {
+          const theta = Math.atan2(end.y - center, end.x - center);
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(center, center);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(end.x, end.y);
+          ctx.lineTo(end.x - 13 * Math.cos(theta - Math.PI / 7), end.y - 13 * Math.sin(theta - Math.PI / 7));
+          ctx.lineTo(end.x - 13 * Math.cos(theta + Math.PI / 7), end.y - 13 * Math.sin(theta + Math.PI / 7));
+          ctx.closePath();
+          ctx.fill();
+          ctx.font = "700 15px Inter";
+          ctx.fillText(label, end.x + 8, end.y - 8);
+          ctx.font = "500 11px DM Mono";
+          ctx.fillText(valueLabel, end.x + 8, end.y + 8);
+        };
+
+        arrow(vEnd, "#00d4aa", "V", `${state.voltage} V`);
+        arrow(iEnd, "#f6c85f", "I", `${state.current} A`);
+
+        ctx.beginPath();
+        ctx.strokeStyle = cssVar("--accent-2");
+        ctx.lineWidth = 2;
+        ctx.arc(center, center, 58, 0, derived.phi, false);
+        ctx.stroke();
+        ctx.fillStyle = cssVar("--text");
+        ctx.font = "600 14px Inter";
+        ctx.fillText(`φ = ${fmt(state.phaseAngle, 0)}°`, center + 42, center + 42);
+        ctx.fillStyle = cssVar("--muted");
+        ctx.font = "500 12px DM Mono";
+        ctx.fillText(`V scale: 100-480 V`, 22, height - 52);
+        ctx.fillText(`I scale: 1-100 A`, 22, height - 36);
+        ctx.fillText(`${state.frequency} Hz reference`, 22, height - 20);
+
+        requestAnimationFrame(drawPhasor);
+      };
+
+      const animateWaveform = () => {
+        if (!waveformFrozen) {
+          waveformOffset = (waveformOffset + 0.035) % (Math.PI * 2);
+          if (activePanel === "waveform") updateWaveformChart();
+        }
+        requestAnimationFrame(animateWaveform);
+      };
+
+      // UI
+      const cacheElements = () => {
+        [
+          "powerTriangleChart", "waveformChart", "voltageSpectrumChart", "currentSpectrumChart", "pfCorrectionChart",
+          "phasorCanvas", "systemStatus", "themeToggle", "menuToggle", "mobileMenu", "desktopNav", "freezeToggle",
+          "voltage", "current", "phaseAngle", "h3", "h5", "h7", "targetPF", "siteName", "currentPFInput",
+          "pfcVoltage", "pfcFrequency", "pfcPower", "reportDate", "summaryTable", "assessmentText", "recommendations",
+          "downloadCsv", "printReport"
+        ].forEach(id => els[id] = document.getElementById(id));
+      };
+
+      const updateAllKPIs = () => {
+        document.getElementById("kpiP").textContent = fmt(derived.pKW, 2);
+        document.getElementById("kpiQ").textContent = fmt(derived.qKVAR, 2);
+        document.getElementById("kpiS").textContent = fmt(derived.sKVA, 2);
+        document.getElementById("kpiPF").textContent = fmt(derived.pf, 3);
+        document.getElementById("kpiTHDV").textContent = fmt(derived.thdV, 2);
+        document.getElementById("kpiTHDI").textContent = fmt(derived.thdI, 2);
+        els.systemStatus.textContent = `Sampling at ${state.frequency} Hz`;
+        document.getElementById("thdVText").textContent = `${fmt(derived.thdV, 2)}%`;
+        document.getElementById("thdIText").textContent = `${fmt(derived.thdI, 2)}%`;
+        setBadge(document.getElementById("voltageBadge"), "V", derived.thdV <= 5);
+        setBadge(document.getElementById("currentBadge"), "I", derived.thdI <= 5);
+        drawSparklines();
+      };
+
+      const setBadge = (badge, label, pass) => {
+        badge.className = `badge ${pass ? "pass" : "fail"}`;
+        badge.textContent = `${label} ${pass ? "PASS" : "FAIL"}`;
+      };
+
+      const setSliderFill = input => {
+        const min = Number(input.min);
+        const max = Number(input.max);
+        const value = Number(input.value);
+        input.style.setProperty("--fill", `${((value - min) / (max - min)) * 100}%`);
+      };
+
+      const updateReadouts = () => {
+        document.getElementById("voltageReadout").textContent = `${state.voltage} V`;
+        document.getElementById("currentReadout").textContent = `${state.current} A`;
+        document.getElementById("phaseReadout").textContent = `${state.phaseAngle}°`;
+        document.getElementById("h3Readout").textContent = `${fmt(state.h3 * 100, 0)}%`;
+        document.getElementById("h5Readout").textContent = `${fmt(state.h5 * 100, 0)}%`;
+        document.getElementById("h7Readout").textContent = `${fmt(state.h7 * 100, 0)}%`;
+        document.getElementById("targetPFReadout").textContent = fmt(state.targetPF, 2);
+        ["voltage", "current", "phaseAngle", "h3", "h5", "h7", "targetPF"].forEach(id => setSliderFill(els[id]));
+        document.querySelectorAll("[data-frequency]").forEach(button => button.classList.toggle("active", Number(button.dataset.frequency) === state.frequency));
+      };
+
+      const updatePowerFactorPanel = () => {
+        els.currentPFInput.value = fmt(derived.pf, 3);
+        els.pfcVoltage.value = state.voltage;
+        els.pfcFrequency.value = state.frequency;
+        els.pfcPower.value = fmt(derived.pKW, 3);
+        document.getElementById("qcResult").textContent = `${fmt(derived.qcKVAR, 2)} kVAR`;
+        document.getElementById("capResult").textContent = `${fmt(derived.capacitanceUF, 2)} μF`;
+        document.getElementById("sNewResult").textContent = `${fmt(derived.sNewKVA, 2)} kVA`;
+        document.getElementById("iNewResult").textContent = `${fmt(derived.iNew, 2)} A`;
+        document.getElementById("energySavingsResult").textContent = `${fmt(derived.energySavingsKWh, 0)} kWh`;
+        document.getElementById("costSavingsResult").textContent = `$${fmt(derived.costSavings, 2)}`;
+      };
+
+      const updateAuditReport = () => {
+        const today = new Date();
+        els.reportDate.textContent = today.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+        const rows = [
+          ["Voltage V", `${state.voltage} V`],
+          ["Current I", `${state.current} A`],
+          ["Real Power P", `${fmt(derived.pKW, 3)} kW`],
+          ["Reactive Power Q", `${fmt(derived.qKVAR, 3)} kVAR`],
+          ["Apparent Power S", `${fmt(derived.sKVA, 3)} kVA`],
+          ["Power Factor", fmt(derived.pf, 3)],
+          ["THD_V", `${fmt(derived.thdV, 2)}%`],
+          ["THD_I", `${fmt(derived.thdI, 2)}%`],
+          ["Frequency", `${state.frequency} Hz`]
+        ];
+        els.summaryTable.innerHTML = rows.map(([label, value]) => `<tr><td>${label}</td><td>${value}</td></tr>`).join("");
+
+        const pfRating = derived.pf > 0.9 ? "Good" : derived.pf >= 0.8 ? "Fair" : "Poor";
+        const thdPass = derived.thdV <= 5 && derived.thdI <= 5;
+        els.assessmentText.textContent = `Power factor is ${pfRating.toLowerCase()} at ${fmt(derived.pf, 3)}. Harmonic distortion ${thdPass ? "passes" : "does not pass"} the IEEE 519 5% screening limit with THD_V at ${fmt(derived.thdV, 2)}% and THD_I at ${fmt(derived.thdI, 2)}%.`;
+
+        const recommendations = [];
+        if (derived.pf < 0.9) recommendations.push(`Install or stage a capacitor bank of approximately ${fmt(derived.qcKVAR, 2)} kVAR to improve displacement power factor.`);
+        if (!thdPass) recommendations.push("Evaluate passive or active harmonic filtering and identify nonlinear load contributors before final equipment sizing.");
+        if (state.current > 80) recommendations.push("Review feeder loading and thermal margins because measured current is near the upper audit range.");
+        if (state.frequency === 50) recommendations.push("Confirm rotating equipment and capacitor ratings are appropriate for 50 Hz operation.");
+        if (!recommendations.length) recommendations.push("Maintain current operating profile and continue periodic power quality trending.");
+        els.recommendations.innerHTML = recommendations.map(item => `<li>${item}</li>`).join("");
+      };
+
+      const setActivePanel = panelId => {
+        activePanel = panelId;
+        document.querySelectorAll(".panel").forEach(panel => panel.classList.toggle("active", panel.id === panelId));
+        document.querySelectorAll(".nav-link").forEach(link => link.classList.toggle("active", link.dataset.panel === panelId));
+        els.mobileMenu.classList.remove("open");
+        Object.values(charts).forEach(chart => setTimeout(() => chart.resize(), 40));
+      };
+
+      const createMobileNav = () => {
+        els.mobileMenu.innerHTML = els.desktopNav.innerHTML;
+      };
+
+      const bindEvents = () => {
+        document.querySelectorAll(".nav-link").forEach(link => {
+          link.addEventListener("click", () => setActivePanel(link.dataset.panel));
+        });
+
+        els.mobileMenu.addEventListener("click", event => {
+          const link = event.target.closest(".nav-link");
+          if (link) setActivePanel(link.dataset.panel);
+        });
+
+        els.menuToggle.addEventListener("click", () => els.mobileMenu.classList.toggle("open"));
+
+        els.themeToggle.addEventListener("click", () => {
+          document.body.classList.toggle("light");
+          const icon = document.body.classList.contains("light") ? "sun" : "moon";
+          els.themeToggle.innerHTML = `<i data-lucide="${icon}"></i>`;
+          lucide.createIcons();
+          refreshChartTheme();
+          drawSparklines();
+        });
+
+        [
+          ["voltage", "voltage", value => Number(value)],
+          ["current", "current", value => Number(value)],
+          ["phaseAngle", "phaseAngle", value => Number(value)],
+          ["h3", "h3", value => Number(value) / 100],
+          ["h5", "h5", value => Number(value) / 100],
+          ["h7", "h7", value => Number(value) / 100],
+          ["targetPF", "targetPF", value => Number(value)]
+        ].forEach(([id, key, transform]) => {
+          els[id].addEventListener("input", event => {
+            state[key] = transform(event.target.value);
+            recalculate();
+          });
+        });
+
+        document.querySelectorAll("[data-frequency]").forEach(button => {
+          button.addEventListener("click", () => {
+            state.frequency = Number(button.dataset.frequency);
+            recalculate();
+          });
+        });
+
+        els.currentPFInput.addEventListener("change", event => {
+          const pf = clamp(Number(event.target.value) || derived.pf, 0.01, 1);
+          state.phaseAngle = Math.round(radToDeg(Math.acos(pf)));
+          els.phaseAngle.value = state.phaseAngle;
+          recalculate();
+        });
+
+        els.siteName.addEventListener("input", event => {
+          state.siteName = event.target.value || "Industrial Site A";
+        });
+
+        els.freezeToggle.addEventListener("click", () => {
+          waveformFrozen = !waveformFrozen;
+          els.freezeToggle.innerHTML = `<i data-lucide="${waveformFrozen ? "play" : "pause"}"></i><span>${waveformFrozen ? "Play" : "Freeze"}</span>`;
+          lucide.createIcons();
+        });
+
+        els.downloadCsv.addEventListener("click", downloadCsv);
+        els.printReport.addEventListener("click", () => window.print());
+        window.addEventListener("resize", drawSparklines);
+      };
+
+      const downloadCsv = () => {
+        const rows = [
+          ["Site Name", state.siteName],
+          ["Date", els.reportDate.textContent],
+          ["Voltage V", state.voltage],
+          ["Current A", state.current],
+          ["Real Power kW", fmt(derived.pKW, 4)],
+          ["Reactive Power kVAR", fmt(derived.qKVAR, 4)],
+          ["Apparent Power kVA", fmt(derived.sKVA, 4)],
+          ["Power Factor", fmt(derived.pf, 4)],
+          ["THD_V %", fmt(derived.thdV, 2)],
+          ["THD_I %", fmt(derived.thdI, 2)],
+          ["Frequency Hz", state.frequency],
+          ["Required Capacitor kVAR", fmt(derived.qcKVAR, 4)],
+          ["Capacitance uF", fmt(derived.capacitanceUF, 4)],
+          ["Monthly Energy Savings kWh", fmt(derived.energySavingsKWh, 2)],
+          ["Monthly Cost Savings USD", fmt(derived.costSavings, 2)]
+        ];
+        const csv = rows.map(row => row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${state.siteName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "power-audit"}-report.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      // INIT
+      const init = () => {
+        cacheElements();
+        createMobileNav();
+        bindEvents();
+        lucide.createIcons();
+        derived = calculate();
+        Array.from({ length: 12 }).forEach(() => pushHistory());
+        updateReadouts();
+        updateAllKPIs();
+        updatePowerFactorPanel();
+        updateAuditReport();
+        createCharts();
+        requestAnimationFrame(drawPhasor);
+        requestAnimationFrame(animateWaveform);
+      };
+
+      init();
+    });
+  </script>
+</body>
+</html>

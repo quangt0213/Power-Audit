@@ -1077,8 +1077,9 @@
         const qKVAR = qVAR / 1000;
         const sKVA = sVA / 1000;
         const pf = pW / sVA;
-        const thdV = Math.sqrt(state.h3 ** 2 + state.h5 ** 2 + state.h7 ** 2) / 1.0 * 100;
-        const thdI = Math.sqrt(state.h3 ** 2 + state.h5 ** 2 + state.h7 ** 2) / 1.0 * 100;
+        const harmonicSum = Math.sqrt(state.h3 ** 2 + state.h5 ** 2 + state.h7 ** 2);
+        const thdV = harmonicSum * 100;
+        const thdI = harmonicSum * 100;
         const targetPF = clamp(state.targetPF, 0.8, 1);
         const phi1 = Math.acos(clamp(pf, 0.01, 1));
         const phi2 = Math.acos(targetPF);
